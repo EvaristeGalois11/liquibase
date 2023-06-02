@@ -21,42 +21,40 @@ import java.io.InputStream;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-import static java.lang.String.format;
-
 @SuppressWarnings("java:S2583")
 public abstract class FormattedChangeLogParser implements ChangeLogParser {
 
-    protected final String FIRST_LINE_REGEX = format("%s\\s*liquibase formatted.*", getCommentSequence());
+    protected final String FIRST_LINE_REGEX = String.format("%s\\s*liquibase formatted.*", getCommentSequence());
     protected final Pattern FIRST_LINE_PATTERN = Pattern.compile(FIRST_LINE_REGEX, Pattern.CASE_INSENSITIVE);
 
-    protected final String PROPERTY_REGEX = format("\\s*%s[\\s]*property\\s+(.*:.*)\\s+(.*:.*).*", getCommentSequence());
+    protected final String PROPERTY_REGEX = String.format("\\s*%s[\\s]*property\\s+(.*:.*)\\s+(.*:.*).*", getCommentSequence());
     protected final Pattern PROPERTY_PATTERN = Pattern.compile(PROPERTY_REGEX, Pattern.CASE_INSENSITIVE);
 
     protected final String ALT_PROPERTY_ONE_DASH_REGEX = "\\s*?[-]+\\s*property\\s.*";
     protected final Pattern ALT_PROPERTY_ONE_DASH_PATTERN = Pattern.compile(ALT_PROPERTY_ONE_DASH_REGEX, Pattern.CASE_INSENSITIVE);
 
-    protected final String CHANGE_SET_REGEX = format("\\s*%s[\\s]*changeset\\s+(\"[^\"]+\"|[^:]+):\\s*(\"[^\"]+\"|\\S+).*", getCommentSequence());
+    protected final String CHANGE_SET_REGEX = String.format("\\s*%s[\\s]*changeset\\s+(\"[^\"]+\"|[^:]+):\\s*(\"[^\"]+\"|\\S+).*", getCommentSequence());
     protected final Pattern CHANGE_SET_PATTERN = Pattern.compile(CHANGE_SET_REGEX, Pattern.CASE_INSENSITIVE);
 
     protected final String ALT_CHANGE_SET_ONE_DASH_REGEX ="\\-[\\s]*changeset\\s.*";
     protected final Pattern ALT_CHANGE_SET_ONE_DASH_PATTERN = Pattern.compile(ALT_CHANGE_SET_ONE_DASH_REGEX, Pattern.CASE_INSENSITIVE);
 
-    protected final String ALT_CHANGE_SET_NO_OTHER_INFO_REGEX =format("\\s*%s[\\s]*changeset[\\s]*.*$", getCommentSequence());
+    protected final String ALT_CHANGE_SET_NO_OTHER_INFO_REGEX = String.format("\\s*%s[\\s]*changeset[\\s]*.*$", getCommentSequence());
     protected final Pattern ALT_CHANGE_SET_NO_OTHER_INFO_PATTERN = Pattern.compile(ALT_CHANGE_SET_NO_OTHER_INFO_REGEX, Pattern.CASE_INSENSITIVE);
 
-    protected final String ROLLBACK_REGEX =format("\\s*%s[\\s]*rollback (.*)", getCommentSequence());
+    protected final String ROLLBACK_REGEX = String.format("\\s*%s[\\s]*rollback (.*)", getCommentSequence());
     protected final Pattern ROLLBACK_PATTERN = Pattern.compile(ROLLBACK_REGEX, Pattern.CASE_INSENSITIVE);
 
     protected final String ALT_ROLLBACK_ONE_DASH_REGEX = "\\s*\\-[\\s]*rollback\\s.*";
     protected final Pattern ALT_ROLLBACK_ONE_DASH_PATTERN = Pattern.compile(ALT_ROLLBACK_ONE_DASH_REGEX, Pattern.CASE_INSENSITIVE);
 
-    protected final String PRECONDITIONS_REGEX = format("\\s*%s[\\s]*preconditions(.*)", getCommentSequence());
+    protected final String PRECONDITIONS_REGEX = String.format("\\s*%s[\\s]*preconditions(.*)", getCommentSequence());
     protected final Pattern PRECONDITIONS_PATTERN = Pattern.compile(PRECONDITIONS_REGEX, Pattern.CASE_INSENSITIVE);
 
     protected final String ALT_PRECONDITIONS_ONE_DASH_REGEX = "\\s*\\-[\\s]*preconditions\\s.*";
     protected final Pattern ALT_PRECONDITIONS_ONE_DASH_PATTERN = Pattern.compile(ALT_PRECONDITIONS_ONE_DASH_REGEX, Pattern.CASE_INSENSITIVE);
 
-    protected final String PRECONDITION_REGEX = format("\\s*%s[\\s]*precondition\\-([a-zA-Z0-9-]+) (.*)", getCommentSequence());
+    protected final String PRECONDITION_REGEX = String.format("\\s*%s[\\s]*precondition\\-([a-zA-Z0-9-]+) (.*)", getCommentSequence());
     protected final Pattern PRECONDITION_PATTERN = Pattern.compile(PRECONDITION_REGEX, Pattern.CASE_INSENSITIVE);
 
     protected final String ALT_PRECONDITION_ONE_DASH_REGEX = "\\s*\\-[\\s]*precondition(.*)";
@@ -77,28 +75,28 @@ public abstract class FormattedChangeLogParser implements ChangeLogParser {
     protected final String ROLLBACK_END_DELIMITER_REGEX = ".*rollbackEndDelimiter:(\\S*).*";
     protected final Pattern ROLLBACK_END_DELIMITER_PATTERN = Pattern.compile(ROLLBACK_END_DELIMITER_REGEX, Pattern.CASE_INSENSITIVE);
 
-    protected final String COMMENT_REGEX = format("%s[\\s]*comment:? (.*)", getCommentSequence());
+    protected final String COMMENT_REGEX = String.format("%s[\\s]*comment:? (.*)", getCommentSequence());
     protected final Pattern COMMENT_PATTERN = Pattern.compile(COMMENT_REGEX, Pattern.CASE_INSENSITIVE);
 
-    protected final String ALT_COMMENT_PLURAL_REGEX = format("%s[\\s]*comments:? (.*)", getCommentSequence());
+    protected final String ALT_COMMENT_PLURAL_REGEX = String.format("%s[\\s]*comments:? (.*)", getCommentSequence());
     protected final Pattern ALT_COMMENT_PLURAL_PATTERN = Pattern.compile(ALT_COMMENT_PLURAL_REGEX, Pattern.CASE_INSENSITIVE);
 
     protected final String ALT_COMMENT_ONE_DASH_REGEX = "\\-[\\s]*comment:? (.*)";
     protected final Pattern ALT_COMMENT_ONE_DASH_PATTERN = Pattern.compile(ALT_COMMENT_ONE_DASH_REGEX, Pattern.CASE_INSENSITIVE);
 
-    protected final String VALID_CHECK_SUM_REGEX = format("%s[\\s]*validCheckSum:? (.*)", getCommentSequence());
+    protected final String VALID_CHECK_SUM_REGEX = String.format("%s[\\s]*validCheckSum:? (.*)", getCommentSequence());
     protected final Pattern VALID_CHECK_SUM_PATTERN = Pattern.compile(VALID_CHECK_SUM_REGEX, Pattern.CASE_INSENSITIVE);
 
     protected final String ALT_VALID_CHECK_SUM_ONE_DASH_REGEX = "^\\-[\\s]*validCheckSum(.*)$";
     protected final Pattern ALT_VALID_CHECK_SUM_ONE_DASH_PATTERN = Pattern.compile(ALT_VALID_CHECK_SUM_ONE_DASH_REGEX, Pattern.CASE_INSENSITIVE);
 
-    protected final String IGNORE_LINES_REGEX = format("%s[\\s]*ignoreLines:(\\w+)", getCommentSequence());
+    protected final String IGNORE_LINES_REGEX = String.format("%s[\\s]*ignoreLines:(\\w+)", getCommentSequence());
     protected final Pattern IGNORE_LINES_PATTERN = Pattern.compile(IGNORE_LINES_REGEX, Pattern.CASE_INSENSITIVE);
 
     protected final String ALT_IGNORE_LINES_ONE_DASH_REGEX = "\\-[\\s]*?ignoreLines:(\\w+).*$";
     protected final Pattern ALT_IGNORE_LINES_ONE_DASH_PATTERN = Pattern.compile(ALT_IGNORE_LINES_ONE_DASH_REGEX, Pattern.CASE_INSENSITIVE);
 
-    protected final String ALT_IGNORE_REGEX = format("%s[\\s]*ignore:(\\w+)", getCommentSequence());
+    protected final String ALT_IGNORE_REGEX = String.format("%s[\\s]*ignore:(\\w+)", getCommentSequence());
     protected final Pattern ALT_IGNORE_PATTERN = Pattern.compile(ALT_IGNORE_REGEX, Pattern.CASE_INSENSITIVE);
 
     protected final String RUN_WITH_REGEX = ".*runWith:([\\w\\$\\{\\}]+).*";

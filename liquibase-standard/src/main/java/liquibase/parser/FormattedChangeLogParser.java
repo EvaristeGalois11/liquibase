@@ -227,7 +227,7 @@ public abstract class FormattedChangeLogParser implements ChangeLogParser {
             StringBuilder currentRollbackSequence = new StringBuilder();
 
             ChangeSet changeSet = null;
-            RawSQLChange change = null;
+            AbstractSQLChange change = null;
 
             Matcher rollbackSplitStatementsPatternMatcher = null;
             boolean rollbackSplitStatements = true;
@@ -299,7 +299,7 @@ public abstract class FormattedChangeLogParser implements ChangeLogParser {
                             throw new ChangeLogParseException("No SQL for changeset " + changeSet.toString(false));
                         }
 
-                        change.setSql(finalCurrentSql);
+                        setChangeSequence(change, finalCurrentSql);
 
                         String currentRollBackSqlAsString = currentRollbackSequence.toString();
                         if (StringUtil.trimToNull(currentRollBackSqlAsString) != null) {
@@ -402,13 +402,10 @@ public abstract class FormattedChangeLogParser implements ChangeLogParser {
                         throw new ChangeLogParseException("\n" + message);
                     }
 
-                    String changeSetId =
-                            changeLogParameters.expandExpressions(StringUtil.stripEnclosingQuotes(idGroup), changeLog);
-                    String changeSetAuthor =
-                            changeLogParameters.expandExpressions(StringUtil.stripEnclosingQuotes(authorGroup), changeLog);
+                    String changeSetId = changeLogParameters.expandExpressions(StringUtil.stripEnclosingQuotes(idGroup), changeLog);
+                    String changeSetAuthor = changeLogParameters.expandExpressions(StringUtil.stripEnclosingQuotes(authorGroup), changeLog);
 
-                    changeSet =
-                            new ChangeSet(changeSetId, changeSetAuthor, runAlways, runOnChange,
+                    changeSet = new ChangeSet(changeSetId, changeSetAuthor, runAlways, runOnChange,
                                     DatabaseChangeLog.normalizePath(logicalFilePath),
                                     context, dbms, runWith, runWithSpoolFile,
                                     runInTransaction,
@@ -419,7 +416,7 @@ public abstract class FormattedChangeLogParser implements ChangeLogParser {
                     changeLog.addChangeSet(changeSet);
 
                     change = new RawSQLChange();
-                    change.setSql(finalCurrentSql);
+                    setChangeSequence(change, finalCurrentSql);
                     if (splitStatementsPatternMatcher.matches()) {
                         change.setSplitStatements(splitStatements);
                     }
@@ -571,6 +568,8 @@ public abstract class FormattedChangeLogParser implements ChangeLogParser {
         return changeLog;
     }
 
+    protected abstract void setChangeSequence(AbstractSQLChange change, String finalCurrentSequence);
+
     // TODO Is it the correct name?
     protected abstract boolean isEndDelimiter(AbstractSQLChange change);
 
@@ -578,7 +577,7 @@ public abstract class FormattedChangeLogParser implements ChangeLogParser {
 
     private void handleElseCase(ChangeLogParameters changeLogParameters, StringBuilder currentRollbackSql, ChangeSet changeSet, Matcher rollbackSplitStatementsPatternMatcher, boolean rollbackSplitStatements, String rollbackEndDelimiter) {
         RawSQLChange rollbackChange = new RawSQLChange();
-        rollbackChange.setSql(changeLogParameters.expandExpressions(currentRollbackSql.toString(), changeSet.getChangeLog()));
+        setChangeSequence(rollbackChange, changeLogParameters.expandExpressions(currentRollbackSql.toString(), changeSet.getChangeLog()));
         if (rollbackSplitStatementsPatternMatcher.matches()) {
             rollbackChange.setSplitStatements(rollbackSplitStatements);
         }

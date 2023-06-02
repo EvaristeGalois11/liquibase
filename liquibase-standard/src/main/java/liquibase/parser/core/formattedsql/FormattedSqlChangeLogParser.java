@@ -24,6 +24,11 @@ public class FormattedSqlChangeLogParser extends FormattedChangeLogParser {
     }
 
     @Override
+    protected void setChangeSequence(AbstractSQLChange change, String finalCurrentSequence) {
+        change.setSql(finalCurrentSequence);
+    }
+
+    @Override
     protected boolean isEndDelimiter(AbstractSQLChange change) {
         // TODO Cast to RawSQLChange?
         return (change.getEndDelimiter() == null) && StringUtil.trimToEmpty(change.getSql()).endsWith("\n/");

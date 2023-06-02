@@ -2,6 +2,7 @@ package liquibase.parser;
 
 import liquibase.Labels;
 import liquibase.Scope;
+import liquibase.change.AbstractSQLChange;
 import liquibase.change.Change;
 import liquibase.change.core.EmptyChange;
 import liquibase.change.core.RawSQLChange;
@@ -222,8 +223,8 @@ public abstract class FormattedChangeLogParser implements ChangeLogParser {
         changeLog.setPhysicalFilePath(physicalChangeLogLocation);
 
         try (BufferedReader reader = new BufferedReader(StreamUtil.readStreamWithReader(openChangeLogFile(physicalChangeLogLocation, resourceAccessor), null))) {
-            StringBuilder currentSql = new StringBuilder();
-            StringBuilder currentRollbackSql = new StringBuilder();
+            StringBuilder currentSequence = new StringBuilder();
+            StringBuilder currentRollbackSequence = new StringBuilder();
 
             ChangeSet changeSet = null;
             RawSQLChange change = null;
@@ -292,7 +293,7 @@ public abstract class FormattedChangeLogParser implements ChangeLogParser {
 
                 Matcher changeSetPatternMatcher = CHANGE_SET_PATTERN.matcher(line);
                 if (changeSetPatternMatcher.matches()) {
-                    String finalCurrentSql = changeLogParameters.expandExpressions(StringUtil.trimToNull(currentSql.toString()), changeLog);
+                    String finalCurrentSql = changeLogParameters.expandExpressions(StringUtil.trimToNull(currentSequence.toString()), changeLog);
                     if (changeSet != null) {
                         if (finalCurrentSql == null) {
                             throw new ChangeLogParseException("No SQL for changeset " + changeSet.toString(false));
@@ -300,14 +301,14 @@ public abstract class FormattedChangeLogParser implements ChangeLogParser {
 
                         change.setSql(finalCurrentSql);
 
-                        String currentRollBackSqlAsString = currentRollbackSql.toString();
+                        String currentRollBackSqlAsString = currentRollbackSequence.toString();
                         if (StringUtil.trimToNull(currentRollBackSqlAsString) != null) {
                             if (currentRollBackSqlAsString.trim().toLowerCase().matches("^not required.*")) {
                                 changeSet.addRollbackChange(new EmptyChange());
                             } else if (currentRollBackSqlAsString.trim().toLowerCase().contains("changesetid")) {
                                 handleChangesetIdCase(physicalChangeLogLocation, changeLog, changeSet, currentRollBackSqlAsString);
                             } else {
-                                handleElseCase(changeLogParameters, currentRollbackSql, changeSet, rollbackSplitStatementsPatternMatcher, rollbackSplitStatements, rollbackEndDelimiter);
+                                handleElseCase(changeLogParameters, currentRollbackSequence, changeSet, rollbackSplitStatementsPatternMatcher, rollbackSplitStatements, rollbackEndDelimiter);
                             }
                         }
                     }
@@ -426,8 +427,8 @@ public abstract class FormattedChangeLogParser implements ChangeLogParser {
                     change.setEndDelimiter(endDelimiter);
                     changeSet.addChange(change);
 
-                    currentSql.setLength(0);
-                    currentRollbackSql.setLength(0);
+                    currentSequence.setLength(0);
+                    currentRollbackSequence.setLength(0);
                 } else {
                     Matcher altChangeSetOneDashPatternMatcher = ALT_CHANGE_SET_ONE_DASH_PATTERN.matcher(line);
                     Matcher altChangeSetNoOtherInfoPatternMatcher = ALT_CHANGE_SET_NO_OTHER_INFO_PATTERN.matcher(line);
@@ -474,13 +475,13 @@ public abstract class FormattedChangeLogParser implements ChangeLogParser {
                                 String message = String.format("Unexpected formatting at line %d. Formatted SQL changelogs require known formats, such as '--rollback <rollback SQL>' and others to be recognized and run. Learn all the options at https://docs.liquibase.com/concepts/changelogs/sql-format.html", count);
                                 throw new ChangeLogParseException("\n" + message);
                             }
-                            currentRollbackSql.append(rollbackMatcher.group(1)).append(System.lineSeparator());
+                            currentRollbackSequence.append(rollbackMatcher.group(1)).append(System.lineSeparator());
                         } else if (altRollbackMatcher.matches()) {
                             String message = String.format("Unexpected formatting at line %d. Formatted SQL changelogs require known formats, such as '--rollback <rollback SQL>' and others to be recognized and run. Learn all the options at https://docs.liquibase.com/concepts/changelogs/sql-format.html", count);
                             throw new ChangeLogParseException("\n" + message);
                         } else if (rollbackMultiLineStartMatcher.matches()) {
                             if (rollbackMultiLineStartMatcher.groupCount() == 0) {
-                                currentRollbackSql.append(extractMultiLineRollBackSQL(reader));
+                                currentRollbackSequence.append(extractMultiLineRollBackSQL(reader));
                             }
                         } else if (preconditionsMatcher.matches()) {
                             if (preconditionsMatcher.groupCount() == 0) {
@@ -533,7 +534,7 @@ public abstract class FormattedChangeLogParser implements ChangeLogParser {
                                     String.format("Unexpected formatting at line %d. Formatted SQL changelogs require known formats, such as '--precondition-sql-check' and others to be recognized and run. Learn all the options at https://docs.liquibase.com/concepts/changelogs/sql-format.html", count);
                             throw new ChangeLogParseException("\n" + message);
                         } else {
-                            currentSql.append(line).append(System.lineSeparator());
+                            currentSequence.append(line).append(System.lineSeparator());
                         }
                     } else {
                         if (commentMatcher.matches()) {
@@ -546,19 +547,19 @@ public abstract class FormattedChangeLogParser implements ChangeLogParser {
             }
 
             if (changeSet != null) {
-                change.setSql(changeLogParameters.expandExpressions(StringUtil.trimToNull(currentSql.toString()), changeSet.getChangeLog()));
+                setChangeSequence(changeLogParameters, currentSequence, changeSet, change);
 
-                if ((change.getEndDelimiter() == null) && StringUtil.trimToEmpty(change.getSql()).endsWith("\n/")) {
+                if (isEndDelimiter(change)) {
                     change.setEndDelimiter("\n/$");
                 }
 
-                if (StringUtil.trimToNull(currentRollbackSql.toString()) != null) {
-                    if (currentRollbackSql.toString().trim().toLowerCase().matches("^not required.*")) {
+                if (StringUtil.trimToNull(currentRollbackSequence.toString()) != null) {
+                    if (currentRollbackSequence.toString().trim().toLowerCase().matches("^not required.*")) {
                         changeSet.addRollbackChange(new EmptyChange());
-                    } else if (currentRollbackSql.toString().trim().toLowerCase().contains("changesetid")) {
-                        handleChangesetIdCase(physicalChangeLogLocation, changeLog, changeSet, currentRollbackSql.toString());
+                    } else if (currentRollbackSequence.toString().trim().toLowerCase().contains("changesetid")) {
+                        handleChangesetIdCase(physicalChangeLogLocation, changeLog, changeSet, currentRollbackSequence.toString());
                     } else {
-                        handleElseCase(changeLogParameters, currentRollbackSql, changeSet, rollbackSplitStatementsPatternMatcher, rollbackSplitStatements, rollbackEndDelimiter);
+                        handleElseCase(changeLogParameters, currentRollbackSequence, changeSet, rollbackSplitStatementsPatternMatcher, rollbackSplitStatements, rollbackEndDelimiter);
                     }
                 }
             }
@@ -569,6 +570,11 @@ public abstract class FormattedChangeLogParser implements ChangeLogParser {
 
         return changeLog;
     }
+
+    // TODO Is it the correct name?
+    protected abstract boolean isEndDelimiter(AbstractSQLChange change);
+
+    protected abstract void setChangeSequence(ChangeLogParameters changeLogParameters, StringBuilder currentSequence, ChangeSet changeSet, AbstractSQLChange change);
 
     private void handleElseCase(ChangeLogParameters changeLogParameters, StringBuilder currentRollbackSql, ChangeSet changeSet, Matcher rollbackSplitStatementsPatternMatcher, boolean rollbackSplitStatements, String rollbackEndDelimiter) {
         RawSQLChange rollbackChange = new RawSQLChange();
@@ -582,8 +588,8 @@ public abstract class FormattedChangeLogParser implements ChangeLogParser {
         changeSet.addRollbackChange(rollbackChange);
     }
 
-    private void handleChangesetIdCase(String physicalChangeLogLocation, DatabaseChangeLog changeLog, ChangeSet changeSet, String currentRollBackSqlAsString) throws ChangeLogParseException {
-        String rollbackString = currentRollBackSqlAsString.replace("\n", "").replace("\r", "");
+    private void handleChangesetIdCase(String physicalChangeLogLocation, DatabaseChangeLog changeLog, ChangeSet changeSet, String currentRollBackSequenceAsString) throws ChangeLogParseException {
+        String rollbackString = currentRollBackSequenceAsString.replace("\n", "").replace("\r", "");
         Matcher authorMatcher = ROLLBACK_CHANGE_SET_AUTHOR_PATTERN.matcher(rollbackString);
         Matcher idMatcher = ROLLBACK_CHANGE_SET_ID_PATTERN.matcher(rollbackString);
         Matcher pathMatcher = ROLLBACK_CHANGE_SET_PATH_PATTERN.matcher(rollbackString);
@@ -655,6 +661,7 @@ public abstract class FormattedChangeLogParser implements ChangeLogParser {
         }
         changeLogParameters.set(name, value, context, labels, dbms, global, changeLog);
     }
+
     private StringBuilder extractMultiLineRollBackSQL(BufferedReader reader) throws IOException, ChangeLogParseException {
         StringBuilder multiLineRollbackSQL = new StringBuilder();
         Pattern rollbackMultiLineEndPattern = Pattern.compile(".*\\s*\\*\\/\\s*$", Pattern.CASE_INSENSITIVE);
@@ -688,7 +695,6 @@ public abstract class FormattedChangeLogParser implements ChangeLogParser {
         }
         throw new ChangeLogParseException("Could not parse a SqlCheck precondition from '" + body + "'.");
     }
-
 
     private String parseString(Matcher matcher) {
         String endDelimiter = null;

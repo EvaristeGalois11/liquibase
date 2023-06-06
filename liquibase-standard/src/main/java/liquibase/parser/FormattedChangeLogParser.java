@@ -419,7 +419,7 @@ public abstract class FormattedChangeLogParser implements ChangeLogParser {
                     changeSet.setFailOnError(failOnError);
                     changeLog.addChangeSet(changeSet);
 
-                    change = new RawSQLChange();
+                    change = getChange();
                     setChangeSequence(change, finalCurrentSequence);
                     if (splitStatementsPatternMatcher.matches()) {
                         change.setSplitStatements(splitStatements);
@@ -571,6 +571,8 @@ public abstract class FormattedChangeLogParser implements ChangeLogParser {
 
         return changeLog;
     }
+
+    protected abstract AbstractSQLChange getChange();
 
     protected abstract String getSequenceDocumentationLink();
 

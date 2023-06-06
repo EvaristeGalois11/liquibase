@@ -272,7 +272,7 @@ public abstract class FormattedChangeLogParser implements ChangeLogParser {
                                 }
                             } else if (altIgnoreLinesOneDashMatcher.matches()) {
                                 String message =
-                                        String.format("Unexpected formatting at line %d. Formatted SQL changelogs require known formats, such as '--ignoreLines:end' and others to be recognized and run. Learn all the options at https://docs.liquibase.com/concepts/changelogs/sql-format.html", count);
+                                        String.format("Unexpected formatting at line %d. Formatted %s changelogs require known formats, such as '--ignoreLines:end' and others to be recognized and run. Learn all the options at %s", count, getSequenceType(), getSequenceDocumentationLink());
                                 throw new ChangeLogParseException("\n" + message);
                             }
                         }
@@ -291,26 +291,26 @@ public abstract class FormattedChangeLogParser implements ChangeLogParser {
                     }
                 } else if (altIgnoreLinesOneDashMatcher.matches() || altIgnoreMatcher.matches()) {
                     String message =
-                            String.format("Unexpected formatting at line %d. Formatted SQL changelogs require known formats, such as '--ignoreLines:<count|start>' and others to be recognized and run. Learn all the options at https://docs.liquibase.com/concepts/changelogs/sql-format.html", count);
+                            String.format("Unexpected formatting at line %d. Formatted %s changelogs require known formats, such as '--ignoreLines:<count|start>' and others to be recognized and run. Learn all the options at %s", count, getSequenceType(), getSequenceDocumentationLink());
                     throw new ChangeLogParseException("\n" + message);
                 }
 
                 Matcher changeSetPatternMatcher = CHANGE_SET_PATTERN.matcher(line);
                 if (changeSetPatternMatcher.matches()) {
-                    String finalCurrentSql = changeLogParameters.expandExpressions(StringUtil.trimToNull(currentSequence.toString()), changeLog);
+                    String finalCurrentSequence = changeLogParameters.expandExpressions(StringUtil.trimToNull(currentSequence.toString()), changeLog);
                     if (changeSet != null) {
-                        if (finalCurrentSql == null) {
-                            throw new ChangeLogParseException("No SQL for changeset " + changeSet.toString(false));
+                        if (finalCurrentSequence == null) {
+                            throw new ChangeLogParseException(String.format("No %s for changeset %s", getSequenceType(), changeSet.toString(false)));
                         }
 
-                        setChangeSequence(change, finalCurrentSql);
+                        setChangeSequence(change, finalCurrentSequence);
 
-                        String currentRollBackSqlAsString = currentRollbackSequence.toString();
-                        if (StringUtil.trimToNull(currentRollBackSqlAsString) != null) {
-                            if (currentRollBackSqlAsString.trim().toLowerCase().matches("^not required.*")) {
+                        String currentRollbackSequenceAsString = currentRollbackSequence.toString();
+                        if (StringUtil.trimToNull(currentRollbackSequenceAsString) != null) {
+                            if (currentRollbackSequenceAsString.trim().toLowerCase().matches("^not required.*")) {
                                 changeSet.addRollbackChange(new EmptyChange());
-                            } else if (currentRollBackSqlAsString.trim().toLowerCase().contains("changesetid")) {
-                                handleChangesetIdCase(physicalChangeLogLocation, changeLog, changeSet, currentRollBackSqlAsString);
+                            } else if (currentRollbackSequenceAsString.trim().toLowerCase().contains("changesetid")) {
+                                handleChangesetIdCase(physicalChangeLogLocation, changeLog, changeSet, currentRollbackSequenceAsString);
                             } else {
                                 handleElseCase(changeLogParameters, currentRollbackSequence, changeSet, rollbackSplitStatementsPatternMatcher, rollbackSplitStatements, rollbackEndDelimiter);
                             }
@@ -402,7 +402,7 @@ public abstract class FormattedChangeLogParser implements ChangeLogParser {
                     Matcher changeSetAuthorIdPatternMatcher = changeSetAuthorIdPattern.matcher(line);
                     if (! changeSetAuthorIdPatternMatcher.matches()) {
                         String message =
-                                String.format("Unexpected formatting at line %d. Formatted SQL changelogs require known formats, such as '--changeset <authorname>:<changesetId>' and others to be recognized and run. Learn all the options at https://docs.liquibase.com/concepts/changelogs/sql-format.html", count);
+                                String.format("Unexpected formatting at line %d. Formatted %s changelogs require known formats, such as '--changeset <authorname>:<changesetId>' and others to be recognized and run. Learn all the options at %s", count, getSequenceType(), getSequenceDocumentationLink());
                         throw new ChangeLogParseException("\n" + message);
                     }
 
@@ -420,7 +420,7 @@ public abstract class FormattedChangeLogParser implements ChangeLogParser {
                     changeLog.addChangeSet(changeSet);
 
                     change = new RawSQLChange();
-                    setChangeSequence(change, finalCurrentSql);
+                    setChangeSequence(change, finalCurrentSequence);
                     if (splitStatementsPatternMatcher.matches()) {
                         change.setSplitStatements(splitStatements);
                     }
@@ -434,7 +434,7 @@ public abstract class FormattedChangeLogParser implements ChangeLogParser {
                     Matcher altChangeSetOneDashPatternMatcher = ALT_CHANGE_SET_ONE_DASH_PATTERN.matcher(line);
                     Matcher altChangeSetNoOtherInfoPatternMatcher = ALT_CHANGE_SET_NO_OTHER_INFO_PATTERN.matcher(line);
                     if (altChangeSetOneDashPatternMatcher.matches() || altChangeSetNoOtherInfoPatternMatcher.matches()) {
-                        String message = String.format("Unexpected formatting at line %d. Formatted SQL changelogs require known formats, such as '--changeset <authorname>:<changesetId>' and others to be recognized and run. Learn all the options at https://docs.liquibase.com/concepts/changelogs/sql-format.html", count);
+                        String message = String.format("Unexpected formatting at line %d. Formatted %s changelogs require known formats, such as '--changeset <authorname>:<changesetId>' and others to be recognized and run. Learn all the options at %s", count, getSequenceType(), getSequenceDocumentationLink());
                         throw new ChangeLogParseException("\n" + message);
                     }
                     if (changeSet != null) {
@@ -452,33 +452,33 @@ public abstract class FormattedChangeLogParser implements ChangeLogParser {
 
                         if (commentMatcher.matches()) {
                             if (commentMatcher.groupCount() == 0) {
-                                String message = String.format("Unexpected formatting at line %d. Formatted SQL changelogs require known formats, such as '--comment <comment>' and others to be recognized and run. Learn all the options at https://docs.liquibase.com/concepts/changelogs/sql-format.html", count);
+                                String message = String.format("Unexpected formatting at line %d. Formatted %s changelogs require known formats, such as '--comment <comment>' and others to be recognized and run. Learn all the options at %s", count, getSequenceType(), getSequenceDocumentationLink());
                                 throw new ChangeLogParseException("\n" + message);
                             }
                             if (commentMatcher.groupCount() == 1) {
                                 changeSet.setComments(commentMatcher.group(1));
                             }
                         } else if (altCommentOneDashMatcher.matches() || altCommentPluralMatcher.matches()) {
-                            String message = String.format("Unexpected formatting at line %d. Formatted SQL changelogs require known formats, such as '--comment <comment>' and others to be recognized and run. Learn all the options at https://docs.liquibase.com/concepts/changelogs/sql-format.html", count);
+                            String message = String.format("Unexpected formatting at line %d. Formatted %s changelogs require known formats, such as '--comment <comment>' and others to be recognized and run. Learn all the options at %s", count, getSequenceType(), getSequenceDocumentationLink());
                             throw new ChangeLogParseException("\n" + message);
                         } else if (validCheckSumMatcher.matches()) {
                             if (validCheckSumMatcher.groupCount() == 0) {
-                                String message = String.format("Unexpected formatting at line %d. Formatted SQL changelogs require known formats, such as '--rollback <rollback SQL>' and others to be recognized and run. Learn all the options at https://docs.liquibase.com/concepts/changelogs/sql-format.html", count);
+                                String message = String.format("Unexpected formatting at line %d. Formatted %s changelogs require known formats, such as '--rollback <rollback %s>' and others to be recognized and run. Learn all the options at %s", count, getSequenceType(), getSequenceType(), getSequenceDocumentationLink());
                                 throw new ChangeLogParseException("\n" + message);
                             } else if (validCheckSumMatcher.groupCount() == 1) {
                                 changeSet.addValidCheckSum(validCheckSumMatcher.group(1));
                             }
                         } else if (altValidCheckSumOneDashMatcher.matches()) {
-                            String message = String.format("Unexpected formatting at line %d. Formatted SQL changelogs require known formats, such as '--validChecksum <checksum>' and others to be recognized and run. Learn all the options at https://docs.liquibase.com/concepts/changelogs/sql-format.html", count);
+                            String message = String.format("Unexpected formatting at line %d. Formatted %s changelogs require known formats, such as '--validChecksum <checksum>' and others to be recognized and run. Learn all the options at %s", count, getSequenceType(), getSequenceDocumentationLink());
                             throw new ChangeLogParseException("\n" + message);
                         } else if (rollbackMatcher.matches()) {
                             if (rollbackMatcher.groupCount() == 0) {
-                                String message = String.format("Unexpected formatting at line %d. Formatted SQL changelogs require known formats, such as '--rollback <rollback SQL>' and others to be recognized and run. Learn all the options at https://docs.liquibase.com/concepts/changelogs/sql-format.html", count);
+                                String message = String.format("Unexpected formatting at line %d. Formatted %s changelogs require known formats, such as '--rollback <rollback %s>' and others to be recognized and run. Learn all the options at %s", count, getSequenceType(), getSequenceType(), getSequenceDocumentationLink());
                                 throw new ChangeLogParseException("\n" + message);
                             }
                             currentRollbackSequence.append(rollbackMatcher.group(1)).append(System.lineSeparator());
                         } else if (altRollbackMatcher.matches()) {
-                            String message = String.format("Unexpected formatting at line %d. Formatted SQL changelogs require known formats, such as '--rollback <rollback SQL>' and others to be recognized and run. Learn all the options at https://docs.liquibase.com/concepts/changelogs/sql-format.html", count);
+                            String message = String.format("Unexpected formatting at line %d. Formatted %s changelogs require known formats, such as '--rollback <rollback %s>' and others to be recognized and run. Learn all the options at %s", count, getSequenceType(), getSequenceType(), getSequenceDocumentationLink());
                             throw new ChangeLogParseException("\n" + message);
                         } else if (rollbackMultiLineStartMatcher.matches()) {
                             if (rollbackMultiLineStartMatcher.groupCount() == 0) {
@@ -486,7 +486,7 @@ public abstract class FormattedChangeLogParser implements ChangeLogParser {
                             }
                         } else if (preconditionsMatcher.matches()) {
                             if (preconditionsMatcher.groupCount() == 0) {
-                                String message = String.format("Unexpected formatting at line %d. Formatted SQL changelogs require known formats, such as '--preconditions <onFail>|<onError>|<onUpdate>' and others to be recognized and run. Learn all the options at https://docs.liquibase.com/concepts/changelogs/sql-format.html", count);
+                                String message = String.format("Unexpected formatting at line %d. Formatted %s changelogs require known formats, such as '--preconditions <onFail>|<onError>|<onUpdate>' and others to be recognized and run. Learn all the options at %s", count, getSequenceType(), getSequenceDocumentationLink());
                                 throw new ChangeLogParseException("\n" + message);
                             }
                             if (preconditionsMatcher.groupCount() == 1) {
@@ -512,7 +512,7 @@ public abstract class FormattedChangeLogParser implements ChangeLogParser {
                                 changeSet.setPreconditions(pc);
                             }
                         } else if (altPreconditionsOneDashMatcher.matches()) {
-                            String message = String.format("Unexpected formatting at line %d. Formatted SQL changelogs require known formats, such as '--preconditions <onFail>|<onError>|<onUpdate>' and others to be recognized and run. Learn all the options at https://docs.liquibase.com/concepts/changelogs/sql-format.html", count);
+                            String message = String.format("Unexpected formatting at line %d. Formatted %s changelogs require known formats, such as '--preconditions <onFail>|<onError>|<onUpdate>' and others to be recognized and run. Learn all the options at %s", count, getSequenceType(), getSequenceDocumentationLink());
                             throw new ChangeLogParseException("\n" + message);
                         } else if (preconditionMatcher.matches()) {
                             if (changeSet.getPreconditions() == null) {
@@ -532,7 +532,7 @@ public abstract class FormattedChangeLogParser implements ChangeLogParser {
                             }
                         } else if (altPreconditionOneDashMatcher.matches()) {
                             String message =
-                                    String.format("Unexpected formatting at line %d. Formatted SQL changelogs require known formats, such as '--precondition-sql-check' and others to be recognized and run. Learn all the options at https://docs.liquibase.com/concepts/changelogs/sql-format.html", count);
+                                    String.format("Unexpected formatting at line %d. Formatted %s changelogs require known formats, such as '--precondition-sql-check' and others to be recognized and run. Learn all the options at `%s`", count, getSequenceType(), getSequenceDocumentationLink());
                             throw new ChangeLogParseException("\n" + message);
                         } else {
                             currentSequence.append(line).append(System.lineSeparator());
@@ -540,7 +540,7 @@ public abstract class FormattedChangeLogParser implements ChangeLogParser {
                     } else {
                         if (commentMatcher.matches()) {
                             String message =
-                                    String.format("Unexpected formatting at line %d. Formatted SQL changelogs do not allow comment lines outside of changesets. Learn all the options at https://docs.liquibase.com/concepts/changelogs/sql-format.html", count);
+                                    String.format("Unexpected formatting at line %d. Formatted %s changelogs do not allow comment lines outside of changesets. Learn all the options at %s", count, getSequenceType(), getSequenceDocumentationLink());
                             throw new ChangeLogParseException("\n" + message);
                         }
                     }

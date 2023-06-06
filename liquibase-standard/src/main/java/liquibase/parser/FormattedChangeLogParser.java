@@ -244,13 +244,17 @@ public abstract class FormattedChangeLogParser implements ChangeLogParser {
                     handleProperty(changeLogParameters, changeLog, propertyPatternMatcher);
                     continue;
                 } else if (altPropertyPatternMatcher.matches()) {
-                    String message = String.format("Unexpected formatting at line %d. Formatted SQL changelogs require known formats, such as '--property name=<property name> value=<property value>' and others to be recognized and run. Learn all the options at https://docs.liquibase.com/concepts/changelogs/sql-format.html", count);
+                    String message = String.format("Unexpected formatting at line %d. Formatted %s changelogs require known formats, such as '--property name=<property name> value=<property value>' and others to be recognized and run. Learn all the options at %s", count, getSequenceType(), getSequenceDocumentationLink());
                     throw new ChangeLogParseException("\n" + message);
                 }
                 Matcher changeLogPatterMatcher = FIRST_LINE_PATTERN.matcher (line);
                 if (changeLogPatterMatcher.matches ()) {
                     Matcher logicalFilePathMatcher = LOGICAL_FILE_PATH_PATTERN.matcher (line);
                     changeLog.setLogicalFilePath (parseString(logicalFilePathMatcher));
+
+                    // TODO CHANGE_LOG_ID_PATTERN in mongosh?
+//                    Matcher changeLogIdMatcher = CHANGE_LOG_ID_PATTERN.matcher (line);
+//                    changeLog.setChangeLogId (parseString(changeLogIdMatcher));
                 }
 
                 Matcher ignoreLinesMatcher = IGNORE_LINES_PATTERN.matcher(line);
@@ -567,6 +571,10 @@ public abstract class FormattedChangeLogParser implements ChangeLogParser {
 
         return changeLog;
     }
+
+    protected abstract String getSequenceDocumentationLink();
+
+    protected abstract String getSequenceType();
 
     protected abstract void setChangeSequence(AbstractSQLChange change, String finalCurrentSequence);
 

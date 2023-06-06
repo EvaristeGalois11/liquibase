@@ -24,6 +24,17 @@ public class FormattedSqlChangeLogParser extends FormattedChangeLogParser {
     }
 
     @Override
+    protected String getSequenceDocumentationLink() {
+        // TODO Do NoSQL items have different link?
+        return "https://docs.liquibase.com/concepts/changelogs/sql-format.html";
+    }
+
+    @Override
+    protected String getSequenceType() {
+        return "SQL";
+    }
+
+    @Override
     protected void setChangeSequence(AbstractSQLChange change, String finalCurrentSequence) {
         change.setSql(finalCurrentSequence);
     }

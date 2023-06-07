@@ -5,7 +5,6 @@ import liquibase.Scope;
 import liquibase.change.AbstractSQLChange;
 import liquibase.change.Change;
 import liquibase.change.core.EmptyChange;
-import liquibase.change.core.RawSQLChange;
 import liquibase.changelog.ChangeLogParameters;
 import liquibase.changelog.ChangeSet;
 import liquibase.changelog.DatabaseChangeLog;
@@ -157,9 +156,11 @@ public abstract class FormattedChangeLogParser implements ChangeLogParser {
     protected final String ROLLBACK_CHANGE_SET_PATH_REGEX = ".*changesetPath:(\\S+).*";
     protected final Pattern ROLLBACK_CHANGE_SET_PATH_PATTERN = Pattern.compile(ROLLBACK_CHANGE_SET_PATH_REGEX, Pattern.CASE_INSENSITIVE);
 
-    protected final String ROLLBACK_MULTI_LINE_START_REGEX = "\\s*\\/\\*\\s*liquibase\\s*rollback\\s*$";
+    protected final String ROLLBACK_MULTI_LINE_START_REGEX = String.format("\\s*%s\\s*liquibase\\s*rollback\\s*$", getStartMultiLineCommentSequence());
     protected final Pattern ROLLBACK_MULTI_LINE_START_PATTERN = Pattern.compile(ROLLBACK_MULTI_LINE_START_REGEX, Pattern.CASE_INSENSITIVE);
 
+    protected final String ROLLBACK_MULTI_LINE_END_REGEX = String.format(".*\\s*%s\\s*$", getEndMultiLineCommentSequence());
+    protected final Pattern ROLLBACK_MULTI_LINE_END_PATTERN = Pattern.compile(ROLLBACK_MULTI_LINE_END_REGEX, Pattern.CASE_INSENSITIVE);
 
     private static final String WORD_RESULT_REGEX = "^(?:expectedResult:)?(\\w+) (.*)";
     private static final String SINGLE_QUOTE_RESULT_REGEX = "^(?:expectedResult:)?'([^']+)' (.*)";
@@ -170,6 +171,10 @@ public abstract class FormattedChangeLogParser implements ChangeLogParser {
             Pattern.compile(SINGLE_QUOTE_RESULT_REGEX, Pattern.CASE_INSENSITIVE),
             Pattern.compile(DOUBLE_QUOTE_RESULT_REGEX, Pattern.CASE_INSENSITIVE)
     };
+
+    protected abstract String getStartMultiLineCommentSequence();
+
+    protected abstract String getEndMultiLineCommentSequence();
 
     protected abstract String getCommentSequence();
 
@@ -482,7 +487,7 @@ public abstract class FormattedChangeLogParser implements ChangeLogParser {
                             throw new ChangeLogParseException("\n" + message);
                         } else if (rollbackMultiLineStartMatcher.matches()) {
                             if (rollbackMultiLineStartMatcher.groupCount() == 0) {
-                                currentRollbackSequence.append(extractMultiLineRollBackSQL(reader));
+                                currentRollbackSequence.append(extractMultiLineRollBack(reader));
                             }
                         } else if (preconditionsMatcher.matches()) {
                             if (preconditionsMatcher.groupCount() == 0) {
@@ -585,9 +590,9 @@ public abstract class FormattedChangeLogParser implements ChangeLogParser {
 
     protected abstract void setChangeSequence(ChangeLogParameters changeLogParameters, StringBuilder currentSequence, ChangeSet changeSet, AbstractSQLChange change);
 
-    private void handleElseCase(ChangeLogParameters changeLogParameters, StringBuilder currentRollbackSql, ChangeSet changeSet, Matcher rollbackSplitStatementsPatternMatcher, boolean rollbackSplitStatements, String rollbackEndDelimiter) {
-        RawSQLChange rollbackChange = new RawSQLChange();
-        setChangeSequence(rollbackChange, changeLogParameters.expandExpressions(currentRollbackSql.toString(), changeSet.getChangeLog()));
+    private void handleElseCase(ChangeLogParameters changeLogParameters, StringBuilder currentRollbackSequence, ChangeSet changeSet, Matcher rollbackSplitStatementsPatternMatcher, boolean rollbackSplitStatements, String rollbackEndDelimiter) {
+        AbstractSQLChange rollbackChange = getChange();
+        setChangeSequence(rollbackChange, changeLogParameters.expandExpressions(currentRollbackSequence.toString(), changeSet.getChangeLog()));
         if (rollbackSplitStatementsPatternMatcher.matches()) {
             rollbackChange.setSplitStatements(rollbackSplitStatements);
         }
@@ -671,25 +676,24 @@ public abstract class FormattedChangeLogParser implements ChangeLogParser {
         changeLogParameters.set(name, value, context, labels, dbms, global, changeLog);
     }
 
-    private StringBuilder extractMultiLineRollBackSQL(BufferedReader reader) throws IOException, ChangeLogParseException {
-        StringBuilder multiLineRollbackSQL = new StringBuilder();
-        Pattern rollbackMultiLineEndPattern = Pattern.compile(".*\\s*\\*\\/\\s*$", Pattern.CASE_INSENSITIVE);
+    private StringBuilder extractMultiLineRollBack(BufferedReader reader) throws IOException, ChangeLogParseException {
+        StringBuilder multiLineRollback = new StringBuilder();
 
         String line;
         if (reader != null) {
             while ((line = reader.readLine()) != null) {
-                if (rollbackMultiLineEndPattern.matcher(line).matches()) {
-                    String[] lastLineSplit = line.split("\\*\\/\\s*$");
+                if (ROLLBACK_MULTI_LINE_END_PATTERN.matcher(line).matches()) {
+                    String[] lastLineSplit = line.split(String.format("%s\\s*$", getEndMultiLineCommentSequence()));
                     if (lastLineSplit.length > 0 && !StringUtil.isWhitespace(lastLineSplit[0])) {
-                        multiLineRollbackSQL.append(lastLineSplit[0]);
+                        multiLineRollback.append(lastLineSplit[0]);
                     }
-                    return multiLineRollbackSQL;
+                    return multiLineRollback;
                 }
-                multiLineRollbackSQL.append(line);
+                multiLineRollback.append(line);
             }
             throw new ChangeLogParseException("Liquibase rollback comment is not closed.");
         }
-        return multiLineRollbackSQL;
+        return multiLineRollback;
     }
 
     private SqlPrecondition parseSqlCheckCondition(String body) throws ChangeLogParseException{

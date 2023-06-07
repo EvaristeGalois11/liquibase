@@ -11,6 +11,16 @@ import liquibase.util.StringUtil;
 public class FormattedSqlChangeLogParser extends FormattedChangeLogParser {
 
     @Override
+    protected String getStartMultiLineCommentSequence() {
+        return "\\/\\*";
+    }
+
+    @Override
+    protected String getEndMultiLineCommentSequence() {
+        return "\\*\\/";
+    }
+
+    @Override
     protected String getCommentSequence() {
         return "\\-\\-";
     }

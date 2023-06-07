@@ -141,12 +141,6 @@ public abstract class FormattedChangeLogParser implements ChangeLogParser {
     protected final String ON_ERROR_REGEX = ".*onError:(\\w+).*";
     protected final Pattern ON_ERROR_PATTERN = Pattern.compile(ON_ERROR_REGEX, Pattern.CASE_INSENSITIVE);
 
-    protected final String ON_UPDATE_SQL_REGEX = ".*onUpdateSQL:(\\w+).*";
-    protected final Pattern ON_UPDATE_SQL_PATTERN = Pattern.compile(ON_UPDATE_SQL_REGEX, Pattern.CASE_INSENSITIVE);
-
-    protected final String ON_SQL_OUTPUT_REGEX = ".*onSqlOutput:(\\w+).*";
-    protected final Pattern ON_SQL_OUTPUT_PATTERN = Pattern.compile(ON_SQL_OUTPUT_REGEX, Pattern.CASE_INSENSITIVE);
-
     protected final String ROLLBACK_CHANGE_SET_ID_REGEX = ".*changeSetId:(\\S+).*";
     protected final Pattern ROLLBACK_CHANGE_SET_ID_PATTERN = Pattern.compile(ROLLBACK_CHANGE_SET_ID_REGEX, Pattern.CASE_INSENSITIVE);
 
@@ -490,32 +484,7 @@ public abstract class FormattedChangeLogParser implements ChangeLogParser {
                                 currentRollbackSequence.append(extractMultiLineRollBack(reader));
                             }
                         } else if (preconditionsMatcher.matches()) {
-                            if (preconditionsMatcher.groupCount() == 0) {
-                                String message = String.format("Unexpected formatting at line %d. Formatted %s changelogs require known formats, such as '--preconditions <onFail>|<onError>|<onUpdate>' and others to be recognized and run. Learn all the options at %s", count, getSequenceType(), getSequenceDocumentationLink());
-                                throw new ChangeLogParseException("\n" + message);
-                            }
-                            if (preconditionsMatcher.groupCount() == 1) {
-                                String body = preconditionsMatcher.group(1);
-                                Matcher onFailMatcher = ON_FAIL_PATTERN.matcher(body);
-                                Matcher onErrorMatcher = ON_ERROR_PATTERN.matcher(body);
-                                Matcher onUpdateSqlMatcher = ON_UPDATE_SQL_PATTERN.matcher(body);
-                                Matcher onSqlOutputMatcher = ON_SQL_OUTPUT_PATTERN.matcher(body);
-
-                                PreconditionContainer pc = new PreconditionContainer();
-                                pc.setOnFail(StringUtil.trimToNull(parseString(onFailMatcher)));
-                                pc.setOnError(StringUtil.trimToNull(parseString(onErrorMatcher)));
-
-                                if (onSqlOutputMatcher.matches() && onUpdateSqlMatcher.matches()) {
-                                    throw new IllegalArgumentException("Please modify the changelog to have preconditions set with either " +
-                                            "'onUpdateSql' or 'onSqlOutput', and not with both.");
-                                }
-                                if (onSqlOutputMatcher.matches()) {
-                                    pc.setOnSqlOutput(StringUtil.trimToNull(parseString(onSqlOutputMatcher)));
-                                } else {
-                                    pc.setOnSqlOutput(StringUtil.trimToNull(parseString(onUpdateSqlMatcher)));
-                                }
-                                changeSet.setPreconditions(pc);
-                            }
+                            handlePreconditionsCase(changeSet, count, preconditionsMatcher);
                         } else if (altPreconditionsOneDashMatcher.matches()) {
                             String message = String.format("Unexpected formatting at line %d. Formatted %s changelogs require known formats, such as '--preconditions <onFail>|<onError>|<onUpdate>' and others to be recognized and run. Learn all the options at %s", count, getSequenceType(), getSequenceDocumentationLink());
                             throw new ChangeLogParseException("\n" + message);
@@ -576,6 +545,8 @@ public abstract class FormattedChangeLogParser implements ChangeLogParser {
 
         return changeLog;
     }
+
+    protected abstract void handlePreconditionsCase(ChangeSet changeSet, int count, Matcher preconditionsMatcher) throws ChangeLogParseException;
 
     protected abstract AbstractSQLChange getChange();
 
@@ -709,7 +680,7 @@ public abstract class FormattedChangeLogParser implements ChangeLogParser {
         throw new ChangeLogParseException("Could not parse a SqlCheck precondition from '" + body + "'.");
     }
 
-    private String parseString(Matcher matcher) {
+    protected String parseString(Matcher matcher) {
         String endDelimiter = null;
         if (matcher.matches()) {
             endDelimiter = matcher.group(1);

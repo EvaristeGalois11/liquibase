@@ -9,8 +9,6 @@ import liquibase.changelog.ChangeLogParameters;
 import liquibase.changelog.ChangeSet;
 import liquibase.changelog.DatabaseChangeLog;
 import liquibase.exception.ChangeLogParseException;
-import liquibase.precondition.core.PreconditionContainer;
-import liquibase.precondition.core.SqlPrecondition;
 import liquibase.resource.ResourceAccessor;
 import liquibase.util.StreamUtil;
 import liquibase.util.StringUtil;
@@ -156,15 +154,7 @@ public abstract class FormattedChangeLogParser implements ChangeLogParser {
     protected final String ROLLBACK_MULTI_LINE_END_REGEX = String.format(".*\\s*%s\\s*$", getEndMultiLineCommentSequence());
     protected final Pattern ROLLBACK_MULTI_LINE_END_PATTERN = Pattern.compile(ROLLBACK_MULTI_LINE_END_REGEX, Pattern.CASE_INSENSITIVE);
 
-    private static final String WORD_RESULT_REGEX = "^(?:expectedResult:)?(\\w+) (.*)";
-    private static final String SINGLE_QUOTE_RESULT_REGEX = "^(?:expectedResult:)?'([^']+)' (.*)";
-    private static final String DOUBLE_QUOTE_RESULT_REGEX = "^(?:expectedResult:)?\"([^\"]+)\" (.*)";
 
-    private static final Pattern[] WORD_AND_QUOTING_PATTERNS = new Pattern[]{
-            Pattern.compile(WORD_RESULT_REGEX, Pattern.CASE_INSENSITIVE),
-            Pattern.compile(SINGLE_QUOTE_RESULT_REGEX, Pattern.CASE_INSENSITIVE),
-            Pattern.compile(DOUBLE_QUOTE_RESULT_REGEX, Pattern.CASE_INSENSITIVE)
-    };
 
     protected abstract String getStartMultiLineCommentSequence();
 
@@ -489,21 +479,7 @@ public abstract class FormattedChangeLogParser implements ChangeLogParser {
                             String message = String.format("Unexpected formatting at line %d. Formatted %s changelogs require known formats, such as '--preconditions <onFail>|<onError>|<onUpdate>' and others to be recognized and run. Learn all the options at %s", count, getSequenceType(), getSequenceDocumentationLink());
                             throw new ChangeLogParseException("\n" + message);
                         } else if (preconditionMatcher.matches()) {
-                            if (changeSet.getPreconditions() == null) {
-                                // create the defaults
-                                changeSet.setPreconditions(new PreconditionContainer());
-                            }
-                            if (preconditionMatcher.groupCount() == 2) {
-                                String name = StringUtil.trimToNull(preconditionMatcher.group(1));
-                                if (name != null) {
-                                    String body = preconditionMatcher.group(2).trim();
-                                    if ("sql-check".equals(name)) {
-                                        changeSet.getPreconditions().addNestedPrecondition(parseSqlCheckCondition(changeLogParameters.expandExpressions(StringUtil.trimToNull(body), changeSet.getChangeLog())));
-                                    } else {
-                                        throw new ChangeLogParseException("The '" + name + "' precondition type is not supported.");
-                                    }
-                                }
-                            }
+                            handlePreconditionCase(changeLogParameters, changeSet, preconditionMatcher);
                         } else if (altPreconditionOneDashMatcher.matches()) {
                             String message =
                                     String.format("Unexpected formatting at line %d. Formatted %s changelogs require known formats, such as '--precondition-sql-check' and others to be recognized and run. Learn all the options at `%s`", count, getSequenceType(), getSequenceDocumentationLink());
@@ -545,6 +521,8 @@ public abstract class FormattedChangeLogParser implements ChangeLogParser {
 
         return changeLog;
     }
+
+    protected abstract void handlePreconditionCase(ChangeLogParameters changeLogParameters, ChangeSet changeSet, Matcher preconditionMatcher) throws ChangeLogParseException;
 
     protected abstract void handlePreconditionsCase(ChangeSet changeSet, int count, Matcher preconditionsMatcher) throws ChangeLogParseException;
 
@@ -667,18 +645,7 @@ public abstract class FormattedChangeLogParser implements ChangeLogParser {
         return multiLineRollback;
     }
 
-    private SqlPrecondition parseSqlCheckCondition(String body) throws ChangeLogParseException{
-        for (Pattern pattern : WORD_AND_QUOTING_PATTERNS) {
-            Matcher matcher = pattern.matcher(body);
-            if (matcher.matches() && (matcher.groupCount() == 2)) {
-                SqlPrecondition p = new SqlPrecondition();
-                p.setExpectedResult(matcher.group(1));
-                p.setSql(matcher.group(2));
-                return p;
-            }
-        }
-        throw new ChangeLogParseException("Could not parse a SqlCheck precondition from '" + body + "'.");
-    }
+
 
     protected String parseString(Matcher matcher) {
         String endDelimiter = null;

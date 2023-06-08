@@ -33,6 +33,11 @@ public class FormattedSqlChangeLogParser extends FormattedChangeLogParser {
     };
 
     @Override
+    protected String getOneCharacter() {
+        return "-";
+    }
+
+    @Override
     protected String getStartMultiLineCommentSequence() {
         return "\\/\\*";
     }
